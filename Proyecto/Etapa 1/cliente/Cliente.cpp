@@ -32,7 +32,7 @@ void Cliente::trim(std::string &s) {
 
 
 // Metodo que permite imprimir la tabla de forma limpia
-void Cliente::printCleanTable(const std::string& html) {
+void Cliente::FIGURE_PARTS(const std::string& html) {
     std::string upperHtml = html;
     for (char &c : upperHtml) c = std::toupper((unsigned char)c);
 
@@ -126,7 +126,7 @@ void Cliente::printCleanTable(const std::string& html) {
 }
 
 // Metodo que permite crear el link para obtener las figuras del servidor
-std::string Cliente::createLink() {
+std::string Cliente::GET_FIGURE() {
    std::string figure = selectFigure();
    std::string part = selectPart();
    
@@ -140,7 +140,7 @@ std::string Cliente::createLink() {
 }
 
 // Metodo que permite obtener las figuras del servidor
-void Cliente::fetchFigures() {
+void Cliente::LIST_FIGURES() {
     Socket tempSocket('s');
     tempSocket.Connect(ose, 80);
     
@@ -203,7 +203,7 @@ void Cliente::fetchFigures() {
 // Metodo que permite seleccionar la figura
 std::string Cliente::selectFigure() {
    if (fetchedFigures.empty()) {
-       fetchFigures();
+       LIST_FIGURES();
    }
    
    printf("Seleccione el numero de figura:\n");
@@ -261,7 +261,7 @@ std::string Cliente::selectPart() {
 
 // Metodo que permite ejecutar el cliente
 void Cliente::ejecutar() {
-   std::string reqStr = createLink();
+   std::string reqStr = GET_FIGURE();
    socket->Connect(ose, 80);   // usar "osi" en la ECCI, "ose" en sus casas
    socket->Write(reqStr.c_str());
 
@@ -276,9 +276,9 @@ void Cliente::ejecutar() {
    
    try {
        HttpResponse httpResponse(response);
-       printCleanTable(httpResponse.getBody());
+       FIGURE_PARTS(httpResponse.getBody());
    } catch (const std::exception& e) {
        std::cerr << "Error parseando respuesta HTTP: " << e.what() << "\n";
-       printCleanTable(response);
+       FIGURE_PARTS(response);
    }
 }
