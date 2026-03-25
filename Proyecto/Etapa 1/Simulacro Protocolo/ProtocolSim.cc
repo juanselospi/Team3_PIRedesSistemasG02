@@ -58,6 +58,8 @@ struct Figura {
 
 map<string, Figura> fileSystem;
 
+map<string, vector<string>> servidores; // mapa de servidores y las figuras que tienen
+
 queue<Mensaje> buzon_ci; // buzon cliente - intermediario
 queue<Mensaje> buzon_is; // buzon intermediario - servidor
 
@@ -219,7 +221,47 @@ void* intermediario(void* arg) {
                 buzon_ci.pop();
                 pthread_mutex_unlock(&mutex_ci);
 
-                cout << "Intermediario recibio solicitud " << m.tipo << " del cliente " << m.id << endl;
+                cout << "Intermediario recibio solicitud GET_FIGURE\n";
+
+                // buscar el servidor en el que existe la figura
+                bool encontrado = false;
+                string servidorDestino;
+
+                for(auto& s : servidores) {
+
+                    for(auto& f : s.second) {
+
+                        if(f == m.figura) {
+
+                            encontrado = true;
+                            servidorDestino = s.first;
+                            break;
+                        }
+                    }
+
+                    if(encontrado) {
+
+                        break;
+                    }
+                }
+
+                if(!encontrado) {
+
+                    Mensaje respuesta;
+                    respuesta.tipo = "FIGURE_NOT_FOUND";
+                    respuesta.id = m.id;
+
+                    pthread_mutex_lock(&mutex_ci);
+
+                    buzon_ci.push(respuesta);
+
+                    pthread_mutex_unlock(&mutex_ci);
+
+                    cout << "Intermediario: figura no existe" << endl;
+
+                    continue;
+                }
+
 
                 Mensaje peticion;
                 peticion.tipo = "ASK_FIGURE";
@@ -227,41 +269,43 @@ void* intermediario(void* arg) {
                 peticion.figura = m.figura;
                 peticion.segmento = m.segmento;
 
-
                 pthread_mutex_lock(&mutex_is);
 
                 buzon_is.push(peticion);
 
                 pthread_mutex_unlock(&mutex_is);
 
-                cout << "Intermediario se comunica con el servidor para resolver " << peticion.tipo << endl;
-                
                 continue;
 
             } else if(m.tipo == "LIST_FIGURES") {
 
                 buzon_ci.pop();
+
                 pthread_mutex_unlock(&mutex_ci);
 
-                cout << "Intermediario recibio solicitud " << m.tipo << " del cliente " << m.id << endl;
+                // en este caso es posible responder con la lista de figuras sin ir al servidor
+                Mensaje respuesta;
+                respuesta.tipo = "FIGURES_LIST";
+                respuesta.id = m.id;
 
-                Mensaje peticion;
-                peticion.tipo = "ASK_FIGURE";
-                peticion.id = m.id;
-                peticion.figura = "ALL";
+                for(auto& s : servidores) {
 
-                pthread_mutex_lock(&mutex_is);
+                    for(auto& f : s.second) {
 
-                buzon_is.push(peticion);
+                        respuesta.figuras.push_back(f);
+                    }
+                }
 
-                pthread_mutex_unlock(&mutex_is);
+                pthread_mutex_lock(&mutex_ci);
 
-                cout << "Intermediario se comunica con el servidor para resolver " << peticion.tipo << endl;
-                
+                buzon_ci.push(respuesta);
+
+                pthread_mutex_unlock(&mutex_ci);
+
+                cout << "Intermediario responde LIST_FIGURES localmente" << endl;
+
                 continue;
-
             }
-
         }
 
         pthread_mutex_unlock(&mutex_ci);
@@ -277,38 +321,28 @@ void* intermediario(void* arg) {
                 buzon_is.pop();
                 pthread_mutex_unlock(&mutex_is);
 
-                cout << "Intermediario recibio respuesta del server" << endl;
-
-                // ETAPA 2: AQUI ES DONDE EN LA SIGUIENTE ETAPA SE PROCESAN LOS DATOS RECIBIDOS DEL SERVER EN HTML CON EL FILEREADER
-
-
                 Mensaje respuesta;
 
-
                 if(m.figura == "ALL"){
-                    
-                    respuesta.tipo = "FIGURES_LIST";
-                    respuesta.id = m.id;
-                    respuesta.figura = m.figura;
-                    respuesta.figuras = m.figuras;
 
+                    respuesta.tipo = "FIGURES_LIST";
+                    respuesta.figuras = m.figuras;
+                    
                 } else {
 
                     respuesta.tipo = "RETURN_FIGURE";
-                    respuesta.id = m.id;
                     respuesta.figura = m.figura;
-                    respuesta.figuras = m.figuras;
                     respuesta.segmento = m.segmento;
                     respuesta.piezas = m.piezas;
                 }
+
+                respuesta.id = m.id;
 
                 pthread_mutex_lock(&mutex_ci);
 
                 buzon_ci.push(respuesta);
 
                 pthread_mutex_unlock(&mutex_ci);
-
-                cout << "Intermediario resuelve " << m.tipo << " para cliente " << m.id << endl;
 
                 continue;
 
@@ -330,7 +364,6 @@ void* intermediario(void* arg) {
 
                 continue;
             }
-
         }
 
         pthread_mutex_unlock(&mutex_is);
@@ -452,6 +485,8 @@ int main() {
     // guardar en filesystem
     fileSystem["Death Star II"] = deathStar;
 
+    // inicializar servidores
+    servidores["server1"].push_back("Death Star II");
 
     pthread_t hilos[3];
 
