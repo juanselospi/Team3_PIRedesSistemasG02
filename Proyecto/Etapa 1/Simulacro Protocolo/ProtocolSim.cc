@@ -139,7 +139,7 @@ void* cliente(void* arg) {
 
             Mensaje respuesta = buzon_ci.front();
 
-            if(respuesta.tipo == "RETURN_FIGURE" && respuesta.id == cliente) {  // VERIFICAR RETURN_FIGURE CON ARIADNA
+            if(respuesta.tipo == "RETURN_FIGURE" && respuesta.id == cliente) { // VERIFICAR RETURN_FIGURE CON ARIADNA
 
                 buzon_ci.pop();
 
@@ -148,12 +148,12 @@ void* cliente(void* arg) {
                 // imprimo el contenido de la respeusta que recive le cliente
                 cout << "FIGURA: " << respuesta.figura << endl;
                 cout << "SEGMENTO: " << respuesta.segmento << endl;
-                cout << "PIEZAS:\n";
+                cout << "PIEZAS:" << endl;
                 for (const pair<string, int>& p : respuesta.piezas) {
                     cout << "- " << p.first << " x" << p.second << endl;
                 }
 
-                cout << "TOTAL DE PIEZAS:\n";
+                cout << "TOTAL DE PIEZAS:" << endl;
                 int total = 0;
                 for (const auto& p : respuesta.piezas) {
                     total += p.second;
@@ -172,7 +172,7 @@ void* cliente(void* arg) {
 
                 pthread_mutex_unlock(&mutex_ci);
 
-                cout << "Lista de LEGOS:\n";
+                cout << "Lista de LEGOS:" << endl;
 
                 for (const string& fs : respuesta.figuras) {
                     cout << "- " << fs << endl;
@@ -188,7 +188,7 @@ void* cliente(void* arg) {
 
                 pthread_mutex_unlock(&mutex_ci);
 
-                cout << "Figura no encontrada\n";
+                cout << "Figura no encontrada" << endl;
 
                 terminado = true;
 
@@ -221,7 +221,7 @@ void* intermediario(void* arg) {
                 buzon_ci.pop();
                 pthread_mutex_unlock(&mutex_ci);
 
-                cout << "Intermediario recibio solicitud GET_FIGURE\n";
+                cout << "Intermediario recibio solicitud GET_FIGURE" << endl;
 
                 // buscar el servidor en el que existe la figura
                 bool encontrado = false;
@@ -283,26 +283,18 @@ void* intermediario(void* arg) {
 
                 pthread_mutex_unlock(&mutex_ci);
 
-                // en este caso es posible responder con la lista de figuras sin ir al servidor
-                Mensaje respuesta;
-                respuesta.tipo = "FIGURES_LIST";
-                respuesta.id = m.id;
+                Mensaje peticion;
+                peticion.tipo = "ASK_FIGURE";
+                peticion.id = m.id;
+                peticion.figura = "ALL";
 
-                for(auto& s : servidores) {
+                pthread_mutex_lock(&mutex_is);
 
-                    for(auto& f : s.second) {
+                buzon_is.push(peticion);
 
-                        respuesta.figuras.push_back(f);
-                    }
-                }
+                pthread_mutex_unlock(&mutex_is);
 
-                pthread_mutex_lock(&mutex_ci);
-
-                buzon_ci.push(respuesta);
-
-                pthread_mutex_unlock(&mutex_ci);
-
-                cout << "Intermediario responde LIST_FIGURES localmente" << endl;
+                cout << "Intermediario consulta servidor para actualizar su registro interno" << endl;
 
                 continue;
             }
@@ -319,15 +311,49 @@ void* intermediario(void* arg) {
             if(m.tipo == "FIGURE_FOUND") {
 
                 buzon_is.pop();
+
                 pthread_mutex_unlock(&mutex_is);
+
+                // sincronizar mapa de servidores solo cuando se hace LIST_FIGURES
+                if(m.figura == "ALL") {
+
+                    string serverName = "server1";
+
+                    // crear el servidor si no existe
+                    if( servidores.find(serverName) == servidores.end()) {
+
+                        servidores[serverName] = vector<string>();
+                    }
+
+                    // agregar solo figuras no registradas
+                    for(auto& f : m.figuras) {
+
+                        bool existe = false;
+
+                        for(auto& existente : servidores[serverName]) {
+
+                            if(existente == f) {
+
+                                existe = true;
+                                break;
+                            }
+                        }
+
+                        if(!existe) {
+
+                            servidores[serverName].push_back(f);
+                            cout << "Intermediario registro nueva figura: " << f << endl;
+                        }
+                    }
+                }
 
                 Mensaje respuesta;
 
-                if(m.figura == "ALL"){
+                if(m.figura == "ALL") {
 
                     respuesta.tipo = "FIGURES_LIST";
                     respuesta.figuras = m.figuras;
-                    
+
                 } else {
 
                     respuesta.tipo = "RETURN_FIGURE";
@@ -479,7 +505,6 @@ int main() {
     // segmento 2
     deathStar.segmento2.push_back({"brick 2x3 yellow", 5, {"bloque", "2026-03-20"}});
     deathStar.segmento2.push_back({"brick 1x1 yellow eye", 4, {"decorativo", "2026-03-20"}});
-
 
 
     // guardar en filesystem
