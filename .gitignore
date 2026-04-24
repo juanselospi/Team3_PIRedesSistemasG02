@@ -1,6 +1,9 @@
 #archivos compilados
 *.o
 *.out
+server
+seed
+
 
 #logs
 *.log
