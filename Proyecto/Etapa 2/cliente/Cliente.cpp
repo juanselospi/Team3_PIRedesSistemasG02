@@ -335,15 +335,22 @@ std::string Cliente::selectFigure() {
     std::string input_lower = input;
 
     for (char &c : input_lower) {
-
-        c = std::tolower((unsigned char)c);
+        if (c == ' ') {
+            c = '_';
+        } else {
+            c = std::tolower((unsigned char)c);
+        }
     }
 
     for (const std::string& fig : fetchedFigures) {
 
         std::string fig_lower = fig;
         for (char &c : fig_lower) {
-            c = std::tolower((unsigned char)c);
+            if (c == ' ') {
+                c = '_';
+            } else {
+                c = std::tolower((unsigned char)c);
+            }
         }
         if (input_lower == fig_lower) {
 
