@@ -22,9 +22,12 @@ class LegoServer {
       std::string getQueryParam( const std::string &, const std::string & );
 
       std::string handleIndex();
+
       std::string handleList( const std::string & );
 
       void handleClient( VSocket * );
+      std::string handleBitacora();
+      std::string handleBitacoraCliente();
 
    public:
       LegoServer( const std::string &, int );

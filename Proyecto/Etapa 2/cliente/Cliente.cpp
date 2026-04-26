@@ -20,7 +20,7 @@ Cliente::Cliente(bool useSSL) {
     //Aqui se cambia la direccion IP del servidor y el puerto
     
     osi = "127.0.0.1";
-    ose = "10.103.41.163";
+    ose = "192.168.100.147";
 
     if (useSSL) {
 
